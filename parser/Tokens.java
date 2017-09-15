@@ -300,6 +300,8 @@ public class Tokens {
         }
 
         String getText();
+        String getRaw();
+        int getStartPos();
         int getSourcePos(int index);
         CommentStyle getStyle();
         boolean isDeprecated();
@@ -404,9 +406,10 @@ public class Tokens {
             } else {
                 ListBuffer<Comment> buf = new ListBuffer<>();
                 for (Comment c : comments) {
-                    if (c.getStyle() == style) {
-                        buf.add(c);
-                    }
+                    buf.add(c);
+                    //if (c.getStyle() == style) {
+                    //    buf.add(c);
+                    //}
                 }
                 return buf.toList();
             }
