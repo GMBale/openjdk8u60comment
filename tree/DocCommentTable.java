@@ -24,6 +24,8 @@
  */
 package com.sun.tools.javac.tree;
 
+import java.util.List;
+
 import com.sun.source.doctree.ErroneousTree;
 import com.sun.tools.javac.parser.Tokens.Comment;
 import com.sun.tools.javac.tree.DCTree.DCDocComment;
@@ -45,7 +47,7 @@ public interface DocCommentTable {
     /**
      * Get the Comment token containing the doc comment, if any, for a tree node.
      */
-    public Comment getComment(JCTree tree);
+    public List<Comment> getComment(JCTree tree);
 
     /**
      * Get the plain text of the doc comment, if any, for a tree node.
@@ -62,5 +64,6 @@ public interface DocCommentTable {
     /**
      * Set the Comment to be associated with a tree node.
      */
-    public void putComment(JCTree tree, Comment c);
+    public void putComment(JCTree tree, List<Comment> c);
+
 }

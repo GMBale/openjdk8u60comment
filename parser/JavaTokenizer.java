@@ -701,11 +701,6 @@ public class JavaTokenizer {
     }
     //where
         List<Comment> addComment(List<Comment> comments, Comment comment) {
-            if(comments == null){
-                System.out.println("addComment size = null");
-            }else{
-                System.out.println("addComment size = " + comments.size());
-            }
             return comments == null ?
                     List.of(comment) :
                     comments.prepend(comment);
@@ -789,12 +784,10 @@ public class JavaTokenizer {
         }
 
         public String getText() {
-            System.out.println("BasicComment getText");
             return null;
         }
 
         public String getRaw() {
-            System.out.println("BasicComment getRaw");
             return null;
         }
 

@@ -387,6 +387,10 @@ public class Tokens {
                     comments.head;
         }
 
+        public List<Comment> comment() {
+            return getComments();
+        }
+
         /**
          * Preserve classic semantics - deprecated should be set if at least one
          * javadoc comment attached to this token contains the '@deprecated' string
@@ -406,10 +410,21 @@ public class Tokens {
             } else {
                 ListBuffer<Comment> buf = new ListBuffer<>();
                 for (Comment c : comments) {
+                    if (c.getStyle() == style) {
+                        buf.add(c);
+                    }
+                }
+                return buf.toList();
+            }
+        }
+
+        private List<Comment> getComments() {
+            if (comments == null) {
+                return List.nil();
+            } else {
+                ListBuffer<Comment> buf = new ListBuffer<>();
+                for (Comment c : comments) {
                     buf.add(c);
-                    //if (c.getStyle() == style) {
-                    //    buf.add(c);
-                    //}
                 }
                 return buf.toList();
             }

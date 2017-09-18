@@ -532,12 +532,13 @@ public class JavacParser implements Parser {
      *  @param tree   The tree to be used as index in the hashtable
      *  @param dc     The doc comment to associate with the tree, or null.
      */
-    void attach(JCTree tree, Comment dc) {
+    void attach(JCTree tree, List<Comment> dc) {
         if (keepDocComments && dc != null) {
 //          System.out.println("doc comment = ");System.out.println(dc);//DEBUG
             docComments.putComment(tree, dc);
         }
     }
+
 
 /* -------- source positions ------- */
 
@@ -2352,7 +2353,8 @@ public class JavacParser implements Parser {
             return List.of(parseStatement());
         case MONKEYS_AT:
         case FINAL: {
-            Comment dc = token.comment(CommentStyle.JAVADOC);
+            //Comment dc = token.comment(CommentStyle.JAVADOC);
+            List<Comment> dc = token.comment();
             JCModifiers mods = modifiersOpt();
             if (token.kind == INTERFACE ||
                 token.kind == CLASS ||
@@ -2369,19 +2371,22 @@ public class JavacParser implements Parser {
             }
         }
         case ABSTRACT: case STRICTFP: {
-            Comment dc = token.comment(CommentStyle.JAVADOC);
+            //Comment dc = token.comment(CommentStyle.JAVADOC);
+            List<Comment> dc = token.comment();
             JCModifiers mods = modifiersOpt();
             return List.of(classOrInterfaceOrEnumDeclaration(mods, dc));
         }
         case INTERFACE:
         case CLASS:
-            Comment dc = token.comment(CommentStyle.JAVADOC);
+            //Comment dc = token.comment(CommentStyle.JAVADOC);
+            List<Comment> dc = token.comment();
             return List.of(classOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
         case ENUM:
         case ASSERT:
             if (allowEnums && token.kind == ENUM) {
                 error(token.pos, "local.enum");
-                dc = token.comment(CommentStyle.JAVADOC);
+                //dc = token.comment(CommentStyle.JAVADOC);
+                dc = token.comment();
                 return List.of(classOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
             } else if (allowAsserts && token.kind == ASSERT) {
                 return List.of(parseStatement());
@@ -2961,7 +2966,7 @@ public class JavacParser implements Parser {
                                                                      JCExpression type,
                                                                      Name name,
                                                                      boolean reqInit,
-                                                                     Comment dc,
+                                                                     List<Comment> dc,
                                                                      T vdefs)
     {
         vdefs.append(variableDeclaratorRest(pos, mods, type, name, reqInit, dc));
@@ -2977,7 +2982,7 @@ public class JavacParser implements Parser {
     /** VariableDeclarator = Ident VariableDeclaratorRest
      *  ConstantDeclarator = Ident ConstantDeclaratorRest
      */
-    JCVariableDecl variableDeclarator(JCModifiers mods, JCExpression type, boolean reqInit, Comment dc) {
+    JCVariableDecl variableDeclarator(JCModifiers mods, JCExpression type, boolean reqInit, List<Comment> dc) {
         return variableDeclaratorRest(token.pos, mods, type, ident(), reqInit, dc);
     }
 
@@ -2988,7 +2993,7 @@ public class JavacParser implements Parser {
      *  @param dc       The documentation comment for the variable declarations, or null.
      */
     JCVariableDecl variableDeclaratorRest(int pos, JCModifiers mods, JCExpression type, Name name,
-                                  boolean reqInit, Comment dc) {
+                                  boolean reqInit, List<Comment> dc) {
         type = bracketsOpt(type);
         JCExpression init = null;
         if (token.kind == EQ) {
@@ -3108,9 +3113,11 @@ public class JavacParser implements Parser {
                 seenImport = true;
                 defs.append(importDeclaration());
             } else {
-                Comment docComment = token.comment(CommentStyle.JAVADOC);
+                //Comment docComment = token.comment(CommentStyle.JAVADOC);
+                List<Comment> docComment = token.comment();
                 if (firstTypeDecl && !seenImport && !seenPackage) {
-                    docComment = firstToken.comment(CommentStyle.JAVADOC);
+                    //docComment = firstToken.comment(CommentStyle.JAVADOC);
+                    docComment = firstToken.comment();
                     consumedToplevelDoc = true;
                 }
                 JCTree def = typeDeclaration(mods, docComment);
@@ -3125,7 +3132,8 @@ public class JavacParser implements Parser {
         }
         JCTree.JCCompilationUnit toplevel = F.at(firstToken.pos).TopLevel(packageAnnotations, pid, defs.toList());
         if (!consumedToplevelDoc)
-            attach(toplevel, firstToken.comment(CommentStyle.JAVADOC));
+            attach(toplevel, firstToken.comment());
+            //attach(toplevel, firstToken.comment(CommentStyle.JAVADOC));
         if (defs.isEmpty())
             storeEnd(toplevel, S.prevToken().endPos);
         if (keepDocComments)
@@ -3167,7 +3175,7 @@ public class JavacParser implements Parser {
     /** TypeDeclaration = ClassOrInterfaceOrEnumDeclaration
      *                  | ";"
      */
-    JCTree typeDeclaration(JCModifiers mods, Comment docComment) {
+    JCTree typeDeclaration(JCModifiers mods, List<Comment> docComment) {
         int pos = token.pos;
         if (mods == null && token.kind == SEMI) {
             nextToken();
@@ -3182,7 +3190,7 @@ public class JavacParser implements Parser {
      *  @param mods     Any modifiers starting the class or interface declaration
      *  @param dc       The documentation comment for the class, or null.
      */
-    JCStatement classOrInterfaceOrEnumDeclaration(JCModifiers mods, Comment dc) {
+    JCStatement classOrInterfaceOrEnumDeclaration(JCModifiers mods, List<Comment> dc) {
         if (token.kind == CLASS) {
             return classDeclaration(mods, dc);
         } else if (token.kind == INTERFACE) {
@@ -3221,12 +3229,13 @@ public class JavacParser implements Parser {
         }
     }
 
+
     /** ClassDeclaration = CLASS Ident TypeParametersOpt [EXTENDS Type]
      *                     [IMPLEMENTS TypeList] ClassBody
      *  @param mods    The modifiers starting the class declaration
      *  @param dc       The documentation comment for the class, or null.
      */
-    protected JCClassDecl classDeclaration(JCModifiers mods, Comment dc) {
+    protected JCClassDecl classDeclaration(JCModifiers mods, List<Comment> dc) {
         int pos = token.pos;
         accept(CLASS);
         Name name = ident();
@@ -3255,7 +3264,7 @@ public class JavacParser implements Parser {
      *  @param mods    The modifiers starting the interface declaration
      *  @param dc       The documentation comment for the interface, or null.
      */
-    protected JCClassDecl interfaceDeclaration(JCModifiers mods, Comment dc) {
+    protected JCClassDecl interfaceDeclaration(JCModifiers mods, List<Comment> dc) {
         int pos = token.pos;
         accept(INTERFACE);
         Name name = ident();
@@ -3278,7 +3287,7 @@ public class JavacParser implements Parser {
      *  @param mods    The modifiers starting the enum declaration
      *  @param dc       The documentation comment for the enum, or null.
      */
-    protected JCClassDecl enumDeclaration(JCModifiers mods, Comment dc) {
+    protected JCClassDecl enumDeclaration(JCModifiers mods, List<Comment> dc) {
         int pos = token.pos;
         accept(ENUM);
         Name name = ident();
@@ -3337,7 +3346,8 @@ public class JavacParser implements Parser {
     /** EnumeratorDeclaration = AnnotationsOpt [TypeArguments] IDENTIFIER [ Arguments ] [ "{" ClassBody "}" ]
      */
     JCTree enumeratorDeclaration(Name enumName) {
-        Comment dc = token.comment(CommentStyle.JAVADOC);
+        //Comment dc = token.comment(CommentStyle.JAVADOC);
+        List<Comment> dc = token.comment();
         int flags = Flags.PUBLIC|Flags.STATIC|Flags.FINAL|Flags.ENUM;
         if (token.deprecatedFlag()) {
             flags |= Flags.DEPRECATED;
@@ -3438,7 +3448,8 @@ public class JavacParser implements Parser {
             nextToken();
             return List.<JCTree>nil();
         } else {
-            Comment dc = token.comment(CommentStyle.JAVADOC);
+            //Comment dc = token.comment(CommentStyle.JAVADOC);
+            List<Comment> dc = token.comment();
             int pos = token.pos;
             JCModifiers mods = modifiersOpt();
             if (token.kind == CLASS ||
@@ -3526,7 +3537,7 @@ public class JavacParser implements Parser {
                               Name name,
                               List<JCTypeParameter> typarams,
                               boolean isInterface, boolean isVoid,
-                              Comment dc) {
+                              List<Comment> dc) {
         if (isInterface && (mods.flags & Flags.STATIC) != 0) {
             checkStaticInterfaceMethods();
         }

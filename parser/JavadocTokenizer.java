@@ -62,8 +62,6 @@ public class JavadocTokenizer extends JavaTokenizer {
     @Override
     protected Comment processComment(int pos, int endPos, CommentStyle style) {
         char[] buf = reader.getRawCharacters(pos, endPos);
-        System.out.println("JavadocComment processComment");
-        System.out.println(new String(buf));
         return new JavadocComment(new DocReader(fac, buf, buf.length, pos), style);
     }
 
@@ -224,16 +222,6 @@ public class JavadocTokenizer extends JavaTokenizer {
 
         @Override
         public String getText() {
-            System.out.println("JavadocComment getText");
-            if(cs == CommentStyle.JAVADOC){
-                System.out.println("JAVADOC");
-            }
-            if(cs == CommentStyle.LINE){
-                System.out.println("LINE");
-            }
-            if(cs == CommentStyle.BLOCK){
-                System.out.println("BLOCK");
-            }
             if (!scanned) {
                 scanDocComment();
             }
@@ -245,7 +233,6 @@ public class JavadocTokenizer extends JavaTokenizer {
 
         @Override
         public String getRaw() {
-            System.out.println("JavadocComment getRaw");
             if (!scanned) {
                 scanDocComment();
             }

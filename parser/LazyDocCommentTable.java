@@ -27,6 +27,8 @@ package com.sun.tools.javac.parser;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 import com.sun.tools.javac.parser.Tokens.Comment;
 import com.sun.tools.javac.tree.DCTree.DCDocComment;
@@ -44,11 +46,16 @@ import com.sun.tools.javac.util.DiagnosticSource;
  */
 public class LazyDocCommentTable implements DocCommentTable {
     private static class Entry {
-        final Comment comment;
+        final List<Comment> comments;
         DCDocComment tree;
 
         Entry(Comment c) {
-            comment = c;
+            comments = new ArrayList<Comment>();
+            comments.add(c);
+        }
+
+        Entry(List<Comment> c) {
+            comments = c;
         }
     }
 
@@ -66,22 +73,26 @@ public class LazyDocCommentTable implements DocCommentTable {
         return table.containsKey(tree);
     }
 
-    public Comment getComment(JCTree tree) {
+    public List<Comment> getComment(JCTree tree) {
         Entry e = table.get(tree);
-        return (e == null) ? null : e.comment;
+        return (e == null) ? null : e.comments;
     }
 
     public String getCommentText(JCTree tree) {
-        Comment c = getComment(tree);
-        return (c == null) ? null : c.getText();
+        List<Comment> c = getComment(tree);
+        if (c == null) return null;
+        int size = c.size();
+        return size == 0 ? null : c.get(size - 1).getText();
     }
 
     public DCDocComment getCommentTree(JCTree tree) {
         Entry e = table.get(tree);
-        if (e == null)
+        if (e == null || e.comments.size() == 0)
             return null;
-        if (e.tree == null)
-            e.tree = new DocCommentParser(fac, diagSource, e.comment).parse();
+        if (e.tree == null) {
+            Comment c = e.comments.get(e.comments.size() - 1);
+            e.tree = new DocCommentParser(fac, diagSource, c).parse();
+        }
         return e.tree;
     }
 
@@ -89,4 +100,7 @@ public class LazyDocCommentTable implements DocCommentTable {
         table.put(tree, new Entry(c));
     }
 
+    public void putComment(JCTree tree, List<Comment> c) {
+        table.put(tree, new Entry(c));
+    }
 }
