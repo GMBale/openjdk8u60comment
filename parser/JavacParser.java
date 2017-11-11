@@ -2344,22 +2344,27 @@ public class JavacParser implements Parser {
     List<JCStatement> blockStatement() {
         //todo: skip to anchor on error(?)
         int pos = token.pos;
+        List<Comment> dc = token.comment();
+        List<JCStatement> ret = null;
         switch (token.kind) {
         case RBRACE: case CASE: case DEFAULT: case EOF:
             return List.nil();
         case LBRACE: case IF: case FOR: case WHILE: case DO: case TRY:
         case SWITCH: case SYNCHRONIZED: case RETURN: case THROW: case BREAK:
         case CONTINUE: case SEMI: case ELSE: case FINALLY: case CATCH:
-            return List.of(parseStatement());
+            ret = List.of(parseStatement());
+            attach(ret.head, dc);
+            return ret;
         case MONKEYS_AT:
         case FINAL: {
             //Comment dc = token.comment(CommentStyle.JAVADOC);
-            List<Comment> dc = token.comment();
             JCModifiers mods = modifiersOpt();
             if (token.kind == INTERFACE ||
                 token.kind == CLASS ||
                 allowEnums && token.kind == ENUM) {
-                return List.of(classOrInterfaceOrEnumDeclaration(mods, dc));
+                ret = List.of(classOrInterfaceOrEnumDeclaration(mods, dc));
+                attach(ret.head, dc);
+                return ret;
             } else {
                 JCExpression t = parseType();
                 ListBuffer<JCStatement> stats =
@@ -2367,29 +2372,37 @@ public class JavacParser implements Parser {
                 // A "LocalVariableDeclarationStatement" subsumes the terminating semicolon
                 storeEnd(stats.last(), token.endPos);
                 accept(SEMI);
-                return stats.toList();
+                ret = stats.toList();
+                attach(ret.head, dc);
+                return ret;
             }
         }
         case ABSTRACT: case STRICTFP: {
             //Comment dc = token.comment(CommentStyle.JAVADOC);
-            List<Comment> dc = token.comment();
             JCModifiers mods = modifiersOpt();
-            return List.of(classOrInterfaceOrEnumDeclaration(mods, dc));
+            ret = List.of(classOrInterfaceOrEnumDeclaration(mods, dc));
+            attach(ret.head, dc);
+            return ret;
         }
         case INTERFACE:
         case CLASS:
             //Comment dc = token.comment(CommentStyle.JAVADOC);
-            List<Comment> dc = token.comment();
-            return List.of(classOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
+            ret = List.of(classOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
+            attach(ret.head, dc);
+            return ret;
         case ENUM:
         case ASSERT:
             if (allowEnums && token.kind == ENUM) {
                 error(token.pos, "local.enum");
                 //dc = token.comment(CommentStyle.JAVADOC);
                 dc = token.comment();
-                return List.of(classOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
+                ret = List.of(classOrInterfaceOrEnumDeclaration(modifiersOpt(), dc));
+                attach(ret.head, dc);
+                return ret;
             } else if (allowAsserts && token.kind == ASSERT) {
-                return List.of(parseStatement());
+                ret = List.of(parseStatement());
+                attach(ret.head, dc);
+                return ret;
             }
             /* fall through to default */
         default:
@@ -2398,7 +2411,9 @@ public class JavacParser implements Parser {
             if (token.kind == COLON && t.hasTag(IDENT)) {
                 nextToken();
                 JCStatement stat = parseStatement();
-                return List.<JCStatement>of(F.at(pos).Labelled(prevToken.name(), stat));
+                ret = List.<JCStatement>of(F.at(pos).Labelled(prevToken.name(), stat));
+                attach(ret.head, dc);
+                return ret;
             } else if ((lastmode & TYPE) != 0 && LAX_IDENTIFIER.accepts(token.kind)) {
                 pos = token.pos;
                 JCModifiers mods = F.at(Position.NOPOS).Modifiers(0);
@@ -2408,12 +2423,16 @@ public class JavacParser implements Parser {
                 // A "LocalVariableDeclarationStatement" subsumes the terminating semicolon
                 storeEnd(stats.last(), token.endPos);
                 accept(SEMI);
-                return stats.toList();
+                ret = stats.toList();
+                attach(ret.head, dc);
+                return ret;
             } else {
                 // This Exec is an "ExpressionStatement"; it subsumes the terminating semicolon
                 JCExpressionStatement expr = to(F.at(pos).Exec(checkExprStat(t)));
                 accept(SEMI);
-                return List.<JCStatement>of(expr);
+                ret = List.<JCStatement>of(expr);
+                attach(ret.head, dc);
+                return ret;
             }
         }
     }
@@ -2441,9 +2460,13 @@ public class JavacParser implements Parser {
     @SuppressWarnings("fallthrough")
     public JCStatement parseStatement() {
         int pos = token.pos;
+        List<Comment> dc = token.comment();
+        JCStatement ret = null;
         switch (token.kind) {
         case LBRACE:
-            return block();
+            ret = block();
+            attach(ret, dc);
+            return ret;
         case IF: {
             nextToken();
             JCExpression cond = parExpression();
@@ -2453,7 +2476,9 @@ public class JavacParser implements Parser {
                 nextToken();
                 elsepart = parseStatementAsBlock();
             }
-            return F.at(pos).If(cond, thenpart, elsepart);
+            ret = F.at(pos).If(cond, thenpart, elsepart);
+            attach(ret, dc);
+            return ret;
         }
         case FOR: {
             nextToken();
@@ -2469,7 +2494,9 @@ public class JavacParser implements Parser {
                 JCExpression expr = parseExpression();
                 accept(RPAREN);
                 JCStatement body = parseStatementAsBlock();
-                return F.at(pos).ForeachLoop(var, expr, body);
+                ret = F.at(pos).ForeachLoop(var, expr, body);
+                attach(ret, dc);
+                return ret;
             } else {
                 accept(SEMI);
                 JCExpression cond = token.kind == SEMI ? null : parseExpression();
@@ -2477,14 +2504,18 @@ public class JavacParser implements Parser {
                 List<JCExpressionStatement> steps = token.kind == RPAREN ? List.<JCExpressionStatement>nil() : forUpdate();
                 accept(RPAREN);
                 JCStatement body = parseStatementAsBlock();
-                return F.at(pos).ForLoop(inits, cond, steps, body);
+                ret = F.at(pos).ForLoop(inits, cond, steps, body);
+                attach(ret, dc);
+                return ret;
             }
         }
         case WHILE: {
             nextToken();
             JCExpression cond = parExpression();
             JCStatement body = parseStatementAsBlock();
-            return F.at(pos).WhileLoop(cond, body);
+            ret = F.at(pos).WhileLoop(cond, body);
+            attach(ret, dc);
+            return ret;
         }
         case DO: {
             nextToken();
@@ -2493,7 +2524,9 @@ public class JavacParser implements Parser {
             JCExpression cond = parExpression();
             JCDoWhileLoop t = to(F.at(pos).DoLoop(body, cond));
             accept(SEMI);
-            return t;
+            ret = t;
+            attach(ret, dc);
+            return ret;
         }
         case TRY: {
             nextToken();
@@ -2520,7 +2553,9 @@ public class JavacParser implements Parser {
                 } else
                     error(pos, "try.without.catch.or.finally");
             }
-            return F.at(pos).Try(resources, body, catchers.toList(), finalizer);
+            ret = F.at(pos).Try(resources, body, catchers.toList(), finalizer);
+            attach(ret, dc);
+            return ret;
         }
         case SWITCH: {
             nextToken();
@@ -2529,55 +2564,75 @@ public class JavacParser implements Parser {
             List<JCCase> cases = switchBlockStatementGroups();
             JCSwitch t = to(F.at(pos).Switch(selector, cases));
             accept(RBRACE);
-            return t;
+            ret = t;
+            attach(ret, dc);
+            return ret;
         }
         case SYNCHRONIZED: {
             nextToken();
             JCExpression lock = parExpression();
             JCBlock body = block();
-            return F.at(pos).Synchronized(lock, body);
+            ret = F.at(pos).Synchronized(lock, body);
+            attach(ret, dc);
+            return ret;
         }
         case RETURN: {
             nextToken();
             JCExpression result = token.kind == SEMI ? null : parseExpression();
             JCReturn t = to(F.at(pos).Return(result));
             accept(SEMI);
-            return t;
+            ret = t;
+            attach(ret, dc);
+            return ret;
         }
         case THROW: {
             nextToken();
             JCExpression exc = parseExpression();
             JCThrow t = to(F.at(pos).Throw(exc));
             accept(SEMI);
-            return t;
+            ret = t;
+            attach(ret, dc);
+            return ret;
         }
         case BREAK: {
             nextToken();
             Name label = LAX_IDENTIFIER.accepts(token.kind) ? ident() : null;
             JCBreak t = to(F.at(pos).Break(label));
             accept(SEMI);
-            return t;
+            ret = t;
+            attach(ret, dc);
+            return ret;
         }
         case CONTINUE: {
             nextToken();
             Name label = LAX_IDENTIFIER.accepts(token.kind) ? ident() : null;
             JCContinue t =  to(F.at(pos).Continue(label));
             accept(SEMI);
-            return t;
+            ret = t;
+            attach(ret, dc);
+            return ret;
         }
         case SEMI:
             nextToken();
-            return toP(F.at(pos).Skip());
+            ret = toP(F.at(pos).Skip());
+            attach(ret, dc);
+            return ret;
         case ELSE:
             int elsePos = token.pos;
             nextToken();
-            return doRecover(elsePos, BasicErrorRecoveryAction.BLOCK_STMT, "else.without.if");
+            ret = doRecover(elsePos, BasicErrorRecoveryAction.BLOCK_STMT, "else.without.if");
+            attach(ret, dc);
+            return ret;
         case FINALLY:
             int finallyPos = token.pos;
             nextToken();
-            return doRecover(finallyPos, BasicErrorRecoveryAction.BLOCK_STMT, "finally.without.try");
+            ret = doRecover(finallyPos, BasicErrorRecoveryAction.BLOCK_STMT, "finally.without.try");
+            attach(ret, dc);
+            return ret;
         case CATCH:
-            return doRecover(token.pos, BasicErrorRecoveryAction.CATCH_CLAUSE, "catch.without.try");
+            ret = doRecover(token.pos, BasicErrorRecoveryAction.CATCH_CLAUSE, "catch.without.try");
+            attach(ret, dc);
+            return ret;
         case ASSERT: {
             if (allowAsserts && token.kind == ASSERT) {
                 nextToken();
@@ -2589,7 +2644,9 @@ public class JavacParser implements Parser {
                 }
                 JCAssert t = to(F.at(pos).Assert(assertion, message));
                 accept(SEMI);
-                return t;
+                ret = t;
+                attach(ret, dc);
+                return ret;
             }
             /* else fall through to default case */
         }
@@ -2600,12 +2657,16 @@ public class JavacParser implements Parser {
             if (token.kind == COLON && expr.hasTag(IDENT)) {
                 nextToken();
                 JCStatement stat = parseStatement();
-                return F.at(pos).Labelled(prevToken.name(), stat);
+                ret = F.at(pos).Labelled(prevToken.name(), stat);
+                attach(ret, dc);
+                return ret;
             } else {
                 // This Exec is an "ExpressionStatement"; it subsumes the terminating semicolon
                 JCExpressionStatement stat = to(F.at(pos).Exec(checkExprStat(expr)));
                 accept(SEMI);
-                return stat;
+                ret = stat;
+                attach(ret, dc);
+                return ret;
             }
         }
     }
